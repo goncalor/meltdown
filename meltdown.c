@@ -1,10 +1,13 @@
 #include <stdio.h>
 #include <signal.h>
 #include <x86intrin.h>
+#include <setjmp.h>
+
+static jmp_buf context;
 
 void segfault_handler() {
-
 	puts("received SIGSEGV");
+	longjmp(context, 1);
 }
 
 int main() {
@@ -18,10 +21,14 @@ int main() {
 
 	asm("" : : "b"(array));
 
+	if(setjmp(context))
+		goto end;
+
 	asm("mov $0x10, %ecx");
 	asm("mov (%ecx), %eax");
 	asm("shl $0xc, %eax");
 	asm("mov (%ebx,%eax), %ebx");
 
+end:
 	return 0;
 }
