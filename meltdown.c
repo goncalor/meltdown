@@ -27,10 +27,10 @@ int main() {
 	if(setjmp(context))
 		goto end;
 
-	asm("mov $0x10, %ecx");
-	asm("mov (%ecx), %eax");
-	asm("shl $0xc, %eax");
-	asm("mov (%ebx,%eax), %ebx");
+	asm("mov $0x10, %rcx");
+	asm("mov (%rcx), %rax");
+	asm("shl $0xc, %rax");
+	asm("mov (%rbx,%rax), %rbx");
 
 end:
 	// puts("receiving end");
