@@ -1,4 +1,4 @@
 all:
-	gcc -Wall meltdown.c
-	gcc -Wall -c meltdown.c
+	gcc -Wall -O0 meltdown.c -o meltdown
+	gcc -Wall -O0 -c meltdown.c
 	objdump -d meltdown.o
