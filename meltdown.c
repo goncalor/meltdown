@@ -7,7 +7,7 @@
 
 int main() {
 
-	unsigned char array[PAGE_SIZE*256];
+	unsigned char array[PAGE_SIZE*(256+1)];
 	unsigned int cycles_high_start, cycles_low_start,
 				 cycles_high_end, cycles_low_end;
 	unsigned long cycles;
@@ -16,19 +16,19 @@ int main() {
 	int i_min = -1;
 	unsigned char dummy;
 
-	for(i=0; i<256; i++)
+	for(i=1; i<=256; i++)
 		array[PAGE_SIZE*i] = i;
 
-	for(i=0; i<256; i++)
+	for(i=1; i<=256; i++)
 		_mm_clflush(&array[PAGE_SIZE*i]);
 
-	asm volatile ("cpuid\n\t" ::: "%rax", "%rbx", "%rcx", "%rdx");
+	// asm volatile ("cpuid\n\t" ::: "%rax", "%rbx", "%rcx", "%rdx");
 
-	dummy = array[PAGE_SIZE*15];
+	dummy = array[PAGE_SIZE*40];
 	printf("dummy %d\n", (unsigned int) dummy);
 
-	for(i=0; i<256; i++) {
-		// // https://stackoverflow.com/a/14214220/2057521
+	for(i=1; i<=256; i++) {
+		// https://stackoverflow.com/a/14214220/2057521
 		asm volatile (
 				"cpuid\n\t"/*serialize*/
 				"rdtsc\n\t"/*read the clock*/
@@ -57,7 +57,7 @@ int main() {
 
 	}
 
-	printf("cycles %3d: %lu\n", i_min, cycles_min);
+	printf("min cycles %3d: %lu\n", i_min, cycles_min);
 	printf("dummy %d\n", (unsigned int) dummy);
 
 	return 0;
