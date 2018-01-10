@@ -16,8 +16,7 @@ void segfault_handler() {
 int main() {
 
     unsigned char array[PAGE_SIZE*(256+1)];
-    unsigned int cycles_high_start, cycles_low_start,
-                 cycles_high_end, cycles_low_end;
+    unsigned int cycles_start, cycles_end;
     unsigned long cycles, cycles_min = ~0;
     int i, i_min = -1;
     unsigned char dummy;
@@ -45,7 +44,7 @@ int main() {
     // because if the content of the address is actually 0 we will not
     // detect that. FIXME
     asm volatile ("" : : "b"(array));
-    asm volatile ("" : : "c"(0xffffffff81601448));
+    asm volatile ("" : : "c"(0xffffffff932001a8));
     asm volatile ("xorq %rax, %rax");
     asm volatile ("movb (%rcx), %al");
     asm volatile ("shlq $0xc, %rax");
@@ -58,21 +57,18 @@ end:
         asm volatile (
                 "cpuid\n\t"/*serialize*/
                 "rdtsc\n\t"/*read the clock*/
-                "mov %%edx, %0\n\t"
-                "mov %%eax, %1\n\t": "=r" (cycles_high_start), "=r"
-                (cycles_low_start):: "%rax", "%rbx", "%rcx", "%rdx");
+                "mov %%eax, %0\n\t": "=r" (cycles_start)
+                :: "%rax", "%rbx", "%rcx", "%rdx");
 
         dummy = array[PAGE_SIZE*i];
 
         asm volatile (
                 "rdtscp\n\t"/*read the clock*/
-                "mov %%edx, %0\n\t"
-                "mov %%eax, %1\n\t"
-                "cpuid\n\t": "=r" (cycles_high_end), "=r"
-                (cycles_low_end):: "%rax", "%rbx", "%rcx", "%rdx");
+                "mov %%eax, %0\n\t"
+                "cpuid\n\t": "=r" (cycles_end)
+                :: "%rax", "%rbx", "%rcx", "%rdx");
 
-        cycles = (((unsigned long) cycles_high_end << 32) | cycles_low_end) -
-            ((unsigned long) cycles_high_start << 32 | cycles_low_start);
+        cycles = cycles_end - cycles_start;
 
         // printf("cycles %3d: %lu\n", i, cycles);
 
