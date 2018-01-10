@@ -2,15 +2,17 @@
 #include <signal.h>
 #include <x86intrin.h>
 #include <setjmp.h>
+#include <ucontext.h>
 
 #define PAGE_SIZE (4096)
 #define CYCLES_CACHE_HIT 100
 
 static jmp_buf context;
 
-void segfault_handler() {
+void segfault_handler(int signum, siginfo_t *siginfo, void *context) {
     // puts("received SIGSEGV");
-    longjmp(context, 1);
+    // longjmp(context, 1);
+    ((ucontext_t*)context)->uc_mcontext.gregs[REG_RIP] = end;
 }
 
 int main() {
@@ -24,7 +26,9 @@ int main() {
 
     // setup segfault handling
     struct sigaction segfault_act;
-    segfault_act.sa_handler = segfault_handler;
+    segfault_act.sa_sigaction = segfault_handler;
+    sigemptyset(&segfault_act.sa_mask);
+    segfault_act.sa_flags = SA_SIGINFO;
     sigaction(SIGSEGV, &segfault_act, NULL);
 
     for(i=1; i<=256; i++)
