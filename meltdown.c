@@ -12,7 +12,8 @@ static jmp_buf context;
 void segfault_handler(int signum, siginfo_t *siginfo, void *context) {
     // puts("received SIGSEGV");
     // longjmp(context, 1);
-    ((ucontext_t*)context)->uc_mcontext.gregs[REG_RIP] = end;
+    // ((ucontext_t*)context)->uc_mcontext.gregs[14] = __end;
+    asm volatile ("jmp __end");
 }
 
 int main() {
@@ -55,6 +56,7 @@ int main() {
     asm volatile ("shlq $0xc, %rax");
     asm volatile ("movq (%rbx,%rax), %rbx");
 
+    asm volatile ("__end: nop");
 end:
 
     for(i=1; i<=256; i++) {
